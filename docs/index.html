@@ -74,9 +74,13 @@
     text-decoration: none;
     font-weight: 600;
     font-size: 15px;
+    border: none;
+    cursor: pointer;
+    font-family: inherit;
   }
   .btn.primary { background: var(--accent); color: #fff; }
   .btn.secondary { background: #f4f4f4; color: var(--ink); }
+  .btn:disabled { opacity: 0.5; cursor: default; }
   section { padding: 60px 0; border-top: 1px solid var(--line); }
   h2 { font-size: 30px; margin: 0 0 28px; letter-spacing: -0.01em; }
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
@@ -117,6 +121,36 @@
     display: block;
     margin: 0 auto;
     image-rendering: pixelated;
+    max-width: 100%;
+    height: auto;
+  }
+  .demo-section { border-top: none; padding-top: 10px; }
+  .demo-controls {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 24px 0;
+  }
+  .demo-note {
+    text-align: center;
+    color: var(--sub);
+    font-size: 14px;
+    max-width: 560px;
+    margin: 0 auto 20px;
+  }
+  .demo-state {
+    text-align: center;
+    color: var(--sub);
+    font-size: 13px;
+    margin-top: 16px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  .keypad-hint {
+    text-align: center;
+    color: var(--sub);
+    font-size: 13px;
+    margin-top: 10px;
   }
   footer { padding: 50px 0 80px; text-align: center; color: var(--sub); font-size: 14px; }
   footer a { color: var(--accent); text-decoration: none; }
@@ -133,6 +167,22 @@
       <a class="btn secondary" href="#tested">Why it's tested</a>
     </div>
   </header>
+
+  <section class="demo-section" id="demo">
+    <h2>A real CHIP-8 running in your browser</h2>
+    <p class="demo-note">This is not a screenshot. The opcode table below is a JavaScript port of the same fetch, decode, and execute loop that lives in <code>src/cpu.rs</code>, running against a small bundled program that bounces a sprite around the 64 by 32 display. Run it, pause it, or step through it one opcode at a time.</p>
+    <canvas id="screen" width="512" height="256"></canvas>
+    <div class="demo-controls">
+      <button class="btn primary" id="btn-run">Run</button>
+      <button class="btn secondary" id="btn-step">Step</button>
+      <button class="btn secondary" id="btn-reset">Reset</button>
+    </div>
+    <p class="demo-state" id="demo-state">PC 0x0200 · I 0x0000 · opcode 0000 · stopped</p>
+    <p class="keypad-hint">Keyboard maps to the CHIP-8 hex keypad: 1234 / qwer / asdf / zxcv. Not used by the bundled demo, but wired up for any ROM you load in from the console.</p>
+    <noscript>
+      <p style="text-align:center;">A live CHIP-8 emulator would run here with JavaScript enabled. Phantom itself runs entirely in your terminal, no browser required.</p>
+    </noscript>
+  </section>
 
   <section id="tested">
     <h2>The CPU is the star</h2>
@@ -188,15 +238,6 @@ cargo run --release -- run          # bundled demo ROM
 cargo test                          # 35 tests, every opcode</code></pre>
   </section>
 
-  <section>
-    <h2>A CHIP-8 sprite, rendered in the browser</h2>
-    <p style="color:var(--sub); text-align:center; margin-top:-10px;">The same font glyph the emulator loads into memory, drawn with plain JS canvas.</p>
-    <canvas id="screen" width="320" height="200"></canvas>
-    <noscript>
-      <p style="text-align:center;">A static CHIP-8 "0" glyph would render here with JavaScript enabled. Phantom itself runs entirely in your terminal, no browser required.</p>
-    </noscript>
-  </section>
-
   <footer>
     <p>Part of a series of small systems tools built from scratch.</p>
     <p><a href="https://github.com/pavanchow/phantom">github.com/pavanchow/phantom</a></p>
@@ -205,37 +246,432 @@ cargo test                          # 35 tests, every opcode</code></pre>
 </div>
 <script>
 (function () {
-  var glyphs = {
-    "0": [0xF0,0x90,0x90,0x90,0xF0],
-    "P": [0xF0,0x90,0xF0,0x80,0x80],
-    "8": [0xF0,0x90,0xF0,0x90,0xF0]
+  "use strict";
+
+  var FONT_START = 0x50;
+  var FONT_SET = [
+    0xF0,0x90,0x90,0x90,0xF0,
+    0x20,0x60,0x20,0x20,0x70,
+    0xF0,0x10,0xF0,0x80,0xF0,
+    0xF0,0x10,0xF0,0x10,0xF0,
+    0x90,0x90,0xF0,0x10,0x10,
+    0xF0,0x80,0xF0,0x10,0xF0,
+    0xF0,0x80,0xF0,0x90,0xF0,
+    0xF0,0x10,0x20,0x40,0x40,
+    0xF0,0x90,0xF0,0x90,0xF0,
+    0xF0,0x90,0xF0,0x10,0xF0,
+    0xF0,0x90,0xF0,0x90,0x90,
+    0xE0,0x90,0xE0,0x90,0xE0,
+    0xF0,0x80,0x80,0x80,0xF0,
+    0xE0,0x90,0x90,0x90,0xE0,
+    0xF0,0x80,0xF0,0x80,0xF0,
+    0xF0,0x80,0xF0,0x80,0x80
+  ];
+
+  var PROGRAM_START = 0x200;
+  var DISPLAY_WIDTH = 64;
+  var DISPLAY_HEIGHT = 32;
+
+  // A tiny two-pass assembler, just enough mnemonics for the demo ROM below.
+  // Keeping jumps as labels instead of hand-computed addresses is what
+  // keeps this port honest against src/cpu.rs.
+  function assemble(source) {
+    var lines = source.split("\n").map(function (l) {
+      return l.replace(/;.*$/, "").trim();
+    }).filter(function (l) { return l.length > 0; });
+
+    var labels = {};
+    var addr = PROGRAM_START;
+    var parsed = [];
+
+    lines.forEach(function (line) {
+      var m = line.match(/^(\w+):\s*(.*)$/);
+      var label = null;
+      if (m) {
+        label = m[1];
+        line = m[2].trim();
+      }
+      if (label) labels[label] = addr;
+      if (!line) return;
+      var spaceIdx = line.indexOf(" ");
+      var mnem = (spaceIdx === -1 ? line : line.slice(0, spaceIdx)).toUpperCase();
+      var argsStr = spaceIdx === -1 ? "" : line.slice(spaceIdx + 1);
+      var args = argsStr.split(",").map(function (a) { return a.trim(); }).filter(function (a) { return a.length > 0; });
+      var size = mnem === "DB" ? args.length : 2;
+      parsed.push({ mnem: mnem, args: args, addr: addr });
+      addr += size;
+    });
+
+    function num(a) {
+      if (/^0x/i.test(a)) return parseInt(a, 16);
+      return parseInt(a, 10);
+    }
+    function reg(a) { return parseInt(a.replace(/^v/i, ""), 16); }
+    function isReg(a) { return /^v[0-9a-f]$/i.test(a); }
+    function addrOf(a) {
+      if (Object.prototype.hasOwnProperty.call(labels, a)) return labels[a];
+      return num(a);
+    }
+    function encodeLD(args) {
+      var a = args[0], b = args[1];
+      if (/^i$/i.test(a)) return 0xA000 | addrOf(b);
+      if (/^dt$/i.test(a)) return 0xF015 | (reg(b) << 8);
+      if (/^st$/i.test(a)) return 0xF018 | (reg(b) << 8);
+      if (/^f$/i.test(a)) return 0xF029 | (reg(b) << 8);
+      if (/^b$/i.test(a)) return 0xF033 | (reg(b) << 8);
+      if (/^\[i\]$/i.test(a)) return 0xF055 | (reg(b) << 8);
+      if (/^\[i\]$/i.test(b)) return 0xF065 | (reg(a) << 8);
+      if (/^dt$/i.test(b)) return 0xF007 | (reg(a) << 8);
+      if (/^k$/i.test(b)) return 0xF00A | (reg(a) << 8);
+      if (isReg(b)) return 0x8000 | (reg(a) << 8) | (reg(b) << 4);
+      return 0x6000 | (reg(a) << 8) | (num(b) & 0xFF);
+    }
+
+    var bytes = [];
+    parsed.forEach(function (ins) {
+      var mnem = ins.mnem, args = ins.args, op;
+      if (mnem === "DB") {
+        args.forEach(function (a) { bytes.push(num(a) & 0xFF); });
+        return;
+      }
+      switch (mnem) {
+        case "CLS": op = 0x00E0; break;
+        case "RET": op = 0x00EE; break;
+        case "JP":
+          op = args.length === 2 ? (0xB000 | addrOf(args[1])) : (0x1000 | addrOf(args[0]));
+          break;
+        case "CALL": op = 0x2000 | addrOf(args[0]); break;
+        case "SE":
+          op = isReg(args[1]) ? (0x5000 | (reg(args[0]) << 8) | (reg(args[1]) << 4))
+                               : (0x3000 | (reg(args[0]) << 8) | (num(args[1]) & 0xFF));
+          break;
+        case "SNE":
+          op = isReg(args[1]) ? (0x9000 | (reg(args[0]) << 8) | (reg(args[1]) << 4))
+                               : (0x4000 | (reg(args[0]) << 8) | (num(args[1]) & 0xFF));
+          break;
+        case "LD": op = encodeLD(args); break;
+        case "ADD":
+          if (/^i$/i.test(args[0])) op = 0xF01E | (reg(args[1]) << 8);
+          else if (isReg(args[1])) op = 0x8004 | (reg(args[0]) << 8) | (reg(args[1]) << 4);
+          else op = 0x7000 | (reg(args[0]) << 8) | (num(args[1]) & 0xFF);
+          break;
+        case "OR": op = 0x8001 | (reg(args[0]) << 8) | (reg(args[1]) << 4); break;
+        case "AND": op = 0x8002 | (reg(args[0]) << 8) | (reg(args[1]) << 4); break;
+        case "XOR": op = 0x8003 | (reg(args[0]) << 8) | (reg(args[1]) << 4); break;
+        case "SUB": op = 0x8005 | (reg(args[0]) << 8) | (reg(args[1]) << 4); break;
+        case "SHR": op = 0x8006 | (reg(args[0]) << 8) | ((args[1] ? reg(args[1]) : 0) << 4); break;
+        case "SUBN": op = 0x8007 | (reg(args[0]) << 8) | (reg(args[1]) << 4); break;
+        case "SHL": op = 0x800E | (reg(args[0]) << 8) | ((args[1] ? reg(args[1]) : 0) << 4); break;
+        case "RND": op = 0xC000 | (reg(args[0]) << 8) | (num(args[1]) & 0xFF); break;
+        case "DRW": op = 0xD000 | (reg(args[0]) << 8) | (reg(args[1]) << 4) | (num(args[2]) & 0xF); break;
+        case "SKP": op = 0xE09E | (reg(args[0]) << 8); break;
+        case "SKNP": op = 0xE0A1 | (reg(args[0]) << 8); break;
+        default: op = 0x0000;
+      }
+      bytes.push((op >> 8) & 0xFF, op & 0xFF);
+    });
+    return bytes;
+  }
+
+  // Bouncing sprite demo: reuses the font "0" glyph as the moving block,
+  // flips direction off each wall, redraws through a delay-timer wait
+  // loop so the whole thing runs at the same cadence a real ROM would.
+  var DEMO_SOURCE = [
+    "LD I, SPRITE",
+    "LD V0, 4",
+    "LD V1, 4",
+    "LD V2, 1",
+    "LD V3, 1",
+    "DRW V0, V1, 5",
+    "loop:",
+    "DRW V0, V1, 5",
+    "ADD V0, V2",
+    "ADD V1, V3",
+    "SE V0, 0",
+    "JP xok1",
+    "LD V2, 1",
+    "xok1:",
+    "SE V0, 59",
+    "JP xok2",
+    "LD V2, 255",
+    "xok2:",
+    "SE V1, 0",
+    "JP yok1",
+    "LD V3, 1",
+    "yok1:",
+    "SE V1, 27",
+    "JP yok2",
+    "LD V3, 255",
+    "yok2:",
+    "DRW V0, V1, 5",
+    "LD V4, 4",
+    "LD DT, V4",
+    "wait:",
+    "LD V4, DT",
+    "SNE V4, 0",
+    "JP loop",
+    "JP wait",
+    "SPRITE:",
+    "DB 0xF0,0x90,0x90,0x90,0xF0"
+  ].join("\n");
+
+  function Chip8() {
+    this.reset();
+  }
+  Chip8.prototype.reset = function () {
+    this.memory = new Uint8Array(4096);
+    this.memory.set(FONT_SET, FONT_START);
+    this.v = new Uint8Array(16);
+    this.i = 0;
+    this.pc = PROGRAM_START;
+    this.stack = new Uint16Array(16);
+    this.sp = 0;
+    this.delay = 0;
+    this.sound = 0;
+    this.keys = new Array(16).fill(false);
+    this.display = new Uint8Array(DISPLAY_WIDTH * DISPLAY_HEIGHT);
+    this.waiting = null;
+    this.lastOpcode = 0;
   };
+  Chip8.prototype.loadRom = function (bytes) {
+    for (var i = 0; i < bytes.length; i++) {
+      this.memory[PROGRAM_START + i] = bytes[i];
+    }
+  };
+  Chip8.prototype.xorPixel = function (x, y, on) {
+    var idx = ((y % DISPLAY_HEIGHT + DISPLAY_HEIGHT) % DISPLAY_HEIGHT) * DISPLAY_WIDTH
+            + ((x % DISPLAY_WIDTH + DISPLAY_WIDTH) % DISPLAY_WIDTH);
+    var was = this.display[idx];
+    this.display[idx] = was ^ (on ? 1 : 0);
+    return was === 1 && on;
+  };
+  Chip8.prototype.tickTimers = function () {
+    if (this.delay > 0) this.delay--;
+    if (this.sound > 0) this.sound--;
+  };
+  Chip8.prototype.step = function () {
+    if (this.waiting !== null) return;
+    var pc = this.pc & 0xFFF;
+    var hi = this.memory[pc] || 0;
+    var lo = this.memory[pc + 1] || 0;
+    var opcode = (hi << 8) | lo;
+    this.lastOpcode = opcode;
+    this.pc = (this.pc + 2) & 0xFFF;
+    try {
+      this.execute(opcode);
+    } catch (e) {
+      // A malformed opcode is a dead end, not a crash. Stay put and move on.
+    }
+  };
+  Chip8.prototype.execute = function (opcode) {
+    var nnn = opcode & 0x0FFF;
+    var n = opcode & 0x000F;
+    var x = (opcode & 0x0F00) >> 8;
+    var y = (opcode & 0x00F0) >> 4;
+    var nn = opcode & 0x00FF;
+    var v = this.v;
+
+    switch (opcode & 0xF000) {
+      case 0x0000:
+        if (opcode === 0x00E0) this.display.fill(0);
+        else if (opcode === 0x00EE) { this.sp = (this.sp - 1 + 16) % 16; this.pc = this.stack[this.sp]; }
+        break;
+      case 0x1000: this.pc = nnn; break;
+      case 0x2000: this.stack[this.sp] = this.pc; this.sp = (this.sp + 1) % 16; this.pc = nnn; break;
+      case 0x3000: if (v[x] === nn) this.pc = (this.pc + 2) & 0xFFF; break;
+      case 0x4000: if (v[x] !== nn) this.pc = (this.pc + 2) & 0xFFF; break;
+      case 0x5000: if (n === 0 && v[x] === v[y]) this.pc = (this.pc + 2) & 0xFFF; break;
+      case 0x6000: v[x] = nn; break;
+      case 0x7000: v[x] = (v[x] + nn) & 0xFF; break;
+      case 0x8000: this.execute8xy(n, x, y); break;
+      case 0x9000: if (n === 0 && v[x] !== v[y]) this.pc = (this.pc + 2) & 0xFFF; break;
+      case 0xA000: this.i = nnn; break;
+      case 0xB000: this.pc = (nnn + v[0]) & 0xFFF; break;
+      case 0xC000: v[x] = (Math.floor(Math.random() * 256) & nn) & 0xFF; break;
+      case 0xD000: this.drawSprite(x, y, n); break;
+      case 0xE000:
+        if (nn === 0x9E) { if (this.keys[v[x] & 0x0F]) this.pc = (this.pc + 2) & 0xFFF; }
+        else if (nn === 0xA1) { if (!this.keys[v[x] & 0x0F]) this.pc = (this.pc + 2) & 0xFFF; }
+        break;
+      case 0xF000: this.executeFx(x, nn); break;
+      default: break;
+    }
+  };
+  Chip8.prototype.execute8xy = function (n, x, y) {
+    var v = this.v, r, carry, borrow;
+    switch (n) {
+      case 0x0: v[x] = v[y]; break;
+      case 0x1: v[x] = v[x] | v[y]; v[0xF] = 0; break;
+      case 0x2: v[x] = v[x] & v[y]; v[0xF] = 0; break;
+      case 0x3: v[x] = v[x] ^ v[y]; v[0xF] = 0; break;
+      case 0x4:
+        r = v[x] + v[y];
+        carry = r > 0xFF ? 1 : 0;
+        v[x] = r & 0xFF;
+        v[0xF] = carry;
+        break;
+      case 0x5:
+        borrow = v[x] < v[y];
+        v[x] = (v[x] - v[y]) & 0xFF;
+        v[0xF] = borrow ? 0 : 1;
+        break;
+      case 0x6:
+        var dropped6 = v[x] & 0x1;
+        v[x] = v[x] >> 1;
+        v[0xF] = dropped6;
+        break;
+      case 0x7:
+        borrow = v[y] < v[x];
+        v[x] = (v[y] - v[x]) & 0xFF;
+        v[0xF] = borrow ? 0 : 1;
+        break;
+      case 0xE:
+        var droppedE = (v[x] & 0x80) >> 7;
+        v[x] = (v[x] << 1) & 0xFF;
+        v[0xF] = droppedE;
+        break;
+      default: break;
+    }
+  };
+  Chip8.prototype.executeFx = function (x, nn) {
+    var v = this.v, i;
+    switch (nn) {
+      case 0x07: v[x] = this.delay; break;
+      case 0x0A: this.waiting = x; break;
+      case 0x15: this.delay = v[x]; break;
+      case 0x18: this.sound = v[x]; break;
+      case 0x1E: this.i = (this.i + v[x]) & 0xFFFF; break;
+      case 0x29: this.i = FONT_START + (v[x] & 0x0F) * 5; break;
+      case 0x33:
+        this.memory[this.i] = Math.floor(v[x] / 100);
+        this.memory[this.i + 1] = Math.floor(v[x] / 10) % 10;
+        this.memory[this.i + 2] = v[x] % 10;
+        break;
+      case 0x55:
+        for (i = 0; i <= x; i++) this.memory[this.i + i] = v[i];
+        this.i = (this.i + x + 1) & 0xFFFF;
+        break;
+      case 0x65:
+        for (i = 0; i <= x; i++) v[i] = this.memory[this.i + i];
+        this.i = (this.i + x + 1) & 0xFFFF;
+        break;
+      default: break;
+    }
+  };
+  Chip8.prototype.drawSprite = function (x, y, n) {
+    var vx = this.v[x], vy = this.v[y];
+    var collision = false;
+    for (var row = 0; row < n; row++) {
+      var byte = this.memory[this.i + row] || 0;
+      for (var col = 0; col < 8; col++) {
+        var bit = (byte >> (7 - col)) & 1;
+        if (bit === 1 && this.xorPixel(vx + col, vy + row, true)) collision = true;
+      }
+    }
+    this.v[0xF] = collision ? 1 : 0;
+  };
+  Chip8.prototype.keyPress = function (key) {
+    this.keys[key & 0x0F] = true;
+    if (this.waiting !== null) {
+      this.v[this.waiting] = key;
+      this.waiting = null;
+    }
+  };
+  Chip8.prototype.keyRelease = function (key) {
+    this.keys[key & 0x0F] = false;
+  };
+
+  // Wiring for the page itself.
   var canvas = document.getElementById("screen");
   if (!canvas || !canvas.getContext) return;
   var ctx = canvas.getContext("2d");
-  var cell = 20;
-  var sequence = ["P", "8", "0"];
-  var offsetX = 4;
+  var scale = canvas.width / DISPLAY_WIDTH;
 
-  function drawGlyph(rows, originX) {
-    for (var row = 0; row < rows.length; row++) {
-      var byte = rows[row];
-      for (var col = 0; col < 8; col++) {
-        var bit = (byte >> (7 - col)) & 1;
-        if (bit) {
-          ctx.fillStyle = "#d4470f";
-          ctx.fillRect(originX + col * cell, 40 + row * cell, cell - 2, cell - 2);
+  var cpu = new Chip8();
+  cpu.loadRom(assemble(DEMO_SOURCE));
+
+  var running = false;
+  var lastFrame = 0;
+  var cyclesPerFrame = 10;
+  var stateEl = document.getElementById("demo-state");
+  var runBtn = document.getElementById("btn-run");
+  var stepBtn = document.getElementById("btn-step");
+  var resetBtn = document.getElementById("btn-reset");
+
+  function render() {
+    ctx.fillStyle = "#000";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#d4470f";
+    for (var yy = 0; yy < DISPLAY_HEIGHT; yy++) {
+      for (var xx = 0; xx < DISPLAY_WIDTH; xx++) {
+        if (cpu.display[yy * DISPLAY_WIDTH + xx]) {
+          ctx.fillRect(xx * scale, yy * scale, scale, scale);
         }
       }
     }
   }
 
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  var x = offsetX * cell;
-  for (var i = 0; i < sequence.length; i++) {
-    drawGlyph(glyphs[sequence[i]], x);
-    x += 9 * cell;
+  function pad(n, len) {
+    var s = n.toString(16).toUpperCase();
+    while (s.length < len) s = "0" + s;
+    return s;
   }
+
+  function updateState() {
+    stateEl.textContent = "PC 0x" + pad(cpu.pc, 4) + " · I 0x" + pad(cpu.i, 4) +
+      " · opcode " + pad(cpu.lastOpcode, 4) + " · " + (running ? "running" : "stopped");
+  }
+
+  function frame(ts) {
+    if (running) {
+      for (var c = 0; c < cyclesPerFrame; c++) cpu.step();
+      cpu.tickTimers();
+      render();
+      updateState();
+    }
+    requestAnimationFrame(frame);
+  }
+
+  runBtn.addEventListener("click", function () {
+    running = !running;
+    runBtn.textContent = running ? "Pause" : "Run";
+    updateState();
+  });
+  stepBtn.addEventListener("click", function () {
+    running = false;
+    runBtn.textContent = "Run";
+    cpu.step();
+    cpu.tickTimers();
+    render();
+    updateState();
+  });
+  resetBtn.addEventListener("click", function () {
+    running = false;
+    runBtn.textContent = "Run";
+    cpu.reset();
+    cpu.loadRom(assemble(DEMO_SOURCE));
+    render();
+    updateState();
+  });
+
+  var KEYMAP = {
+    "1": 0x1, "2": 0x2, "3": 0x3, "4": 0xC,
+    "q": 0x4, "w": 0x5, "e": 0x6, "r": 0xD,
+    "a": 0x7, "s": 0x8, "d": 0x9, "f": 0xE,
+    "z": 0xA, "x": 0x0, "c": 0xB, "v": 0xF
+  };
+  window.addEventListener("keydown", function (ev) {
+    var k = KEYMAP[ev.key.toLowerCase()];
+    if (k !== undefined) cpu.keyPress(k);
+  });
+  window.addEventListener("keyup", function (ev) {
+    var k = KEYMAP[ev.key.toLowerCase()];
+    if (k !== undefined) cpu.keyRelease(k);
+  });
+
+  render();
+  updateState();
+  requestAnimationFrame(frame);
 })();
 </script>
 </body>
