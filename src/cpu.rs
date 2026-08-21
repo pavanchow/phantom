@@ -201,11 +201,10 @@ impl Cpu {
                         self.pc += 2;
                     }
                 }
-                0xA1 => {
-                    if !self.keys[(self.v[x] & 0x0F) as usize] {
+                0xA1
+                    if !self.keys[(self.v[x] & 0x0F) as usize] => {
                         self.pc += 2;
                     }
-                }
                 _ => {}
             },
             0xF000 => self.execute_fx(x, nn),
