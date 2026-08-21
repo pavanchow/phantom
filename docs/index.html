@@ -2,11 +2,241 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>phantom</title>
+<title>Phantom — A CHIP-8 Emulator in Rust</title>
+<meta name="description" content="Phantom is a CHIP-8 emulator in Rust with a fully unit-tested CPU core, covering the full opcode set including carry, borrow, and sprite collision flags.">
+<meta name="author" content="Pavan Nallamothu">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="canonical" href="https://pavanchow.github.io/phantom/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="Phantom — A CHIP-8 Emulator in Rust">
+<meta property="og:description" content="A CHIP-8 emulator in Rust with a fully unit-tested CPU core. The CPU is the star, not the graphics.">
+<meta property="og:url" content="https://pavanchow.github.io/phantom/">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Phantom",
+  "applicationCategory": "DeveloperApplication",
+  "operatingSystem": "Cross-platform",
+  "description": "A CHIP-8 emulator in Rust with a fully unit-tested CPU core covering the full opcode set.",
+  "author": {
+    "@type": "Person",
+    "name": "Pavan Nallamothu"
+  },
+  "url": "https://pavanchow.github.io/phantom/",
+  "codeRepository": "https://github.com/pavanchow/phantom",
+  "programmingLanguage": "Rust"
+}
+</script>
+<style>
+  :root {
+    --accent: #d4470f;
+    --ink: #111111;
+    --sub: #5c5c5c;
+    --line: #ececec;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #ffffff;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+  }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 0 24px; }
+  header.hero { padding: 110px 0 70px; text-align: center; }
+  .kicker {
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    font-size: 13px;
+    color: var(--accent);
+    font-weight: 600;
+    margin-bottom: 18px;
+  }
+  h1 {
+    font-size: 56px;
+    line-height: 1.05;
+    margin: 0 0 22px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .tagline {
+    font-size: 20px;
+    color: var(--sub);
+    max-width: 620px;
+    margin: 0 auto;
+  }
+  .cta-row { margin-top: 36px; display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    display: inline-block;
+    padding: 12px 22px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 15px;
+  }
+  .btn.primary { background: var(--accent); color: #fff; }
+  .btn.secondary { background: #f4f4f4; color: var(--ink); }
+  section { padding: 60px 0; border-top: 1px solid var(--line); }
+  h2 { font-size: 30px; margin: 0 0 28px; letter-spacing: -0.01em; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+  .card {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 26px;
+    background: #fafafa;
+  }
+  .card h3 { margin: 0 0 10px; font-size: 17px; }
+  .card p { margin: 0; color: var(--sub); font-size: 15px; }
+  pre {
+    background: #111111;
+    color: #f4f4f4;
+    padding: 20px 22px;
+    border-radius: 12px;
+    overflow-x: auto;
+    font-size: 14px;
+  }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .opcodes {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+    font-size: 14px;
+  }
+  .opcodes span {
+    display: block;
+    background: #f4f4f4;
+    border-radius: 8px;
+    padding: 10px 12px;
+    text-align: center;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  #screen {
+    background: #000;
+    border-radius: 10px;
+    display: block;
+    margin: 0 auto;
+    image-rendering: pixelated;
+  }
+  footer { padding: 50px 0 80px; text-align: center; color: var(--sub); font-size: 14px; }
+  footer a { color: var(--accent); text-decoration: none; }
+</style>
 </head>
 <body>
-<h1>phantom</h1>
-<p>Site coming soon.</p>
-<p><a href="https://github.com/pavanchow/phantom">View repository</a></p>
+<div class="wrap">
+  <header class="hero">
+    <div class="kicker">CHIP-8 emulator in Rust</div>
+    <h1>Phantom</h1>
+    <p class="tagline">A CPU emulator in Rust where the CPU is the star, not the graphics. A fully unit-tested CHIP-8 core, opcode by opcode.</p>
+    <div class="cta-row">
+      <a class="btn primary" href="https://github.com/pavanchow/phantom">View on GitHub</a>
+      <a class="btn secondary" href="#tested">Why it's tested</a>
+    </div>
+  </header>
+
+  <section id="tested">
+    <h2>The CPU is the star</h2>
+    <div class="cards">
+      <div class="card">
+        <h3>Headless, deterministic core</h3>
+        <p><code>Cpu::step()</code> fetches, decodes, and executes exactly one opcode. No timing, no I/O, no hidden state, so every instruction is independently testable.</p>
+      </div>
+      <div class="card">
+        <h3>Injectable randomness</h3>
+        <p><code>CXNN</code> draws from a swappable <code>RandSource</code>. Tests use a fixed byte sequence, so masked-random behavior is asserted exactly, not just "roughly right."</p>
+      </div>
+      <div class="card">
+        <h3>Exact state assertions</h3>
+        <p>Carry and borrow flags, sprite collision, BCD digits, register dump and load: every test checks precise register, memory, and display state, not just "it ran."</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Full opcode coverage</h2>
+    <div class="opcodes">
+      <span>00E0 clear</span>
+      <span>00EE return</span>
+      <span>1NNN jump</span>
+      <span>2NNN call</span>
+      <span>3XNN skip eq</span>
+      <span>4XNN skip neq</span>
+      <span>5XY0 skip eq</span>
+      <span>9XY0 skip neq</span>
+      <span>6XNN set</span>
+      <span>7XNN add</span>
+      <span>8XY0-8XYE alu</span>
+      <span>ANNN set I</span>
+      <span>BNNN jump+V0</span>
+      <span>CXNN random</span>
+      <span>DXYN draw</span>
+      <span>EX9E/EXA1 keys</span>
+      <span>FX07/15/18 timers</span>
+      <span>FX0A wait key</span>
+      <span>FX1E add I</span>
+      <span>FX29 font</span>
+      <span>FX33 BCD</span>
+      <span>FX55/FX65 mem</span>
+    </div>
+  </section>
+
+  <section>
+    <h2>Try it</h2>
+    <pre><code>cargo build --release
+cargo run --release -- run path/to/rom.ch8
+cargo run --release -- run          # bundled demo ROM
+cargo test                          # 35 tests, every opcode</code></pre>
+  </section>
+
+  <section>
+    <h2>A CHIP-8 sprite, rendered in the browser</h2>
+    <p style="color:var(--sub); text-align:center; margin-top:-10px;">The same font glyph the emulator loads into memory, drawn with plain JS canvas.</p>
+    <canvas id="screen" width="320" height="200"></canvas>
+    <noscript>
+      <p style="text-align:center;">A static CHIP-8 "0" glyph would render here with JavaScript enabled. Phantom itself runs entirely in your terminal, no browser required.</p>
+    </noscript>
+  </section>
+
+  <footer>
+    <p>Part of a series of small systems tools built from scratch.</p>
+    <p><a href="https://github.com/pavanchow/phantom">github.com/pavanchow/phantom</a></p>
+    <p>By Pavan Nallamothu.</p>
+  </footer>
+</div>
+<script>
+(function () {
+  var glyphs = {
+    "0": [0xF0,0x90,0x90,0x90,0xF0],
+    "P": [0xF0,0x90,0xF0,0x80,0x80],
+    "8": [0xF0,0x90,0xF0,0x90,0xF0]
+  };
+  var canvas = document.getElementById("screen");
+  if (!canvas || !canvas.getContext) return;
+  var ctx = canvas.getContext("2d");
+  var cell = 20;
+  var sequence = ["P", "8", "0"];
+  var offsetX = 4;
+
+  function drawGlyph(rows, originX) {
+    for (var row = 0; row < rows.length; row++) {
+      var byte = rows[row];
+      for (var col = 0; col < 8; col++) {
+        var bit = (byte >> (7 - col)) & 1;
+        if (bit) {
+          ctx.fillStyle = "#d4470f";
+          ctx.fillRect(originX + col * cell, 40 + row * cell, cell - 2, cell - 2);
+        }
+      }
+    }
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  var x = offsetX * cell;
+  for (var i = 0; i < sequence.length; i++) {
+    drawGlyph(glyphs[sequence[i]], x);
+    x += 9 * cell;
+  }
+})();
+</script>
 </body>
 </html>
