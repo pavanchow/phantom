@@ -1,3 +1,5 @@
+<img src="docs/logo.svg" alt="Phantom logo" width="96">
+
 # Phantom
 
 **A CHIP-8 emulator in Rust where the CPU is the star, not the graphics.**

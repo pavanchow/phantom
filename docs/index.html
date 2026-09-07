@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <title>Phantom: A CHIP-8 Emulator in Rust</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg">
 <meta name="description" content="Phantom is a CHIP-8 emulator in Rust with a fully unit-tested CPU core, covering the full opcode set including carry, borrow, and sprite collision flags.">
 <meta name="author" content="Pavan Nallamothu (pavanchow)">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -73,6 +74,9 @@
   .demo-controls button.primary:hover{background:var(--accent);border-color:var(--accent);color:#fff}
   .demo-note{color:var(--muted);font-size:14.5px;max-width:600px;margin:0 auto 4px}
   .demo-state{color:var(--faint);font-size:12.5px;margin-top:14px;font-family:var(--mono)}
+  .howto{max-width:600px;margin:18px auto 0;text-align:left;border-top:1px solid var(--line);padding-top:14px}
+  .howto summary{cursor:pointer;font-weight:600;color:var(--muted)}
+  .howto p{margin:12px 0 0;font-size:14px;color:var(--muted);line-height:1.6}
   .keypad-hint{color:var(--faint);font-size:12.5px;margin-top:8px}
 
   section{padding:92px 0;border-top:1px solid var(--line)}
@@ -112,6 +116,7 @@
 
 <div class="wrap">
   <header class="hero">
+    <img src="logo.svg" alt="Phantom logo" width="72" height="72">
     <p class="eyebrow">CHIP-8 emulator in Rust</p>
     <h1>Phantom</h1>
     <p class="sub">A CPU emulator in Rust where the CPU is the star, not the graphics. A fully unit-tested CHIP-8 core, opcode by opcode.</p>
@@ -134,6 +139,10 @@
   </div>
   <p class="demo-note" style="margin-top:22px">This is not a screenshot. The opcode table above is a JavaScript port of the same fetch, decode, and execute loop that lives in <code>src/cpu.rs</code>, running against a small bundled program that bounces a sprite around the 64 by 32 display. Run it, pause it, or step through it one opcode at a time.</p>
   <p class="keypad-hint">Keyboard maps to the CHIP-8 hex keypad: 1234 / qwer / asdf / zxcv. Not used by the bundled demo, but wired up for any ROM you load in from the console.</p>
+  <details class="howto">
+    <summary>How to use this playground</summary>
+    <p>Press <strong>Run</strong> to start the bundled ROM and watch the sprite bounce, <strong>Step</strong> to advance exactly one opcode at a time (the state line shows PC, I, and the current opcode after each step), and <strong>Reset</strong> to reload from the start. The same fetch-decode-execute loop from <code>src/cpu.rs</code> drives every frame here.</p>
+  </details>
   <noscript>
     <p style="text-align:center;">A live CHIP-8 emulator would run here with JavaScript enabled. Phantom itself runs entirely in your terminal, no browser required.</p>
   </noscript>

@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="Phantom logo">
+  <!-- pixel-grid ghost body -->
+  <g fill="#a78bfa">
+    <rect x="40" y="24" width="48" height="12"/>
+    <rect x="28" y="36" width="72" height="12"/>
+    <rect x="28" y="48" width="72" height="12"/>
+    <rect x="28" y="60" width="72" height="12"/>
+    <rect x="28" y="72" width="72" height="12"/>
+    <rect x="28" y="84" width="72" height="12"/>
+    <!-- scalloped bottom -->
+    <rect x="28" y="96" width="12" height="8"/>
+    <rect x="52" y="96" width="12" height="8"/>
+    <rect x="76" y="96" width="12" height="8"/>
+  </g>
+  <!-- pixel eyes -->
+  <rect x="44" y="52" width="12" height="16" fill="#0b0f1a"/>
+  <rect x="72" y="52" width="12" height="16" fill="#0b0f1a"/>
+  <rect x="47" y="55" width="5" height="6" fill="#22d3ee"/>
+  <rect x="75" y="55" width="5" height="6" fill="#22d3ee"/>
+</svg>
