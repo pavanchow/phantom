@@ -6,6 +6,7 @@
 <link rel="icon" type="image/svg+xml" href="logo.svg">
 <meta name="description" content="Phantom is a CHIP-8 emulator in Rust with a fully unit-tested CPU core, covering the full opcode set including carry, borrow, and sprite collision flags.">
 <meta name="author" content="Pavan Nallamothu (pavanchow)">
+<meta name="keywords" content="CHIP-8 emulator, Rust, CPU emulator, opcode, interpreter, fetch decode execute, unit tested, retro computing, virtual machine, Pavan Nallamothu, pavanchow">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="canonical" href="https://pavanchow.github.io/phantom/">
 <meta property="og:type" content="website">
@@ -19,6 +20,8 @@
   "name": "Phantom",
   "applicationCategory": "DeveloperApplication",
   "operatingSystem": "Cross-platform",
+  "softwareVersion": "0.1.0",
+  "license": "https://opensource.org/licenses/MIT",
   "description": "A CHIP-8 emulator in Rust with a fully unit-tested CPU core covering the full opcode set.",
   "author": {
     "@type": "Person",
@@ -49,6 +52,7 @@
   nav .brand .gem{width:16px;height:16px;transform:rotate(45deg);border-radius:3px;background:linear-gradient(135deg,#ff9a6a,#d4470f)}
   nav .links{display:flex;gap:26px;align-items:center}
   nav .links a{color:var(--ink);font-size:14.5px}
+  nav .v{color:var(--faint);font-family:var(--mono);font-size:12px}
   @media(max-width:640px){nav .links a:not(.gh){display:none}}
 
   .hero{padding:70px 0 30px;text-align:center}
@@ -111,6 +115,7 @@
   <div class="links">
     <a href="#demo">Demo</a><a href="#tested">CPU</a><a href="#opcodes">Opcodes</a>
     <a class="gh" href="https://github.com/pavanchow/phantom">GitHub</a>
+    <span class="v">v0.1.0</span>
   </div>
 </div></nav>
 
@@ -195,6 +200,18 @@
       <span>FX33 BCD</span>
       <span>FX55/FX65 mem</span>
     </div>
+  </div>
+</section>
+
+<section id="proof">
+  <div class="wrap">
+    <h2>Every opcode, asserted</h2>
+    <p class="lead">Not eyeballed on a screen. The core is checked instruction by instruction, and this is a real run.</p>
+    <pre><code><span style="color:#8a8d9a">$ cargo test</span>
+   Compiling phantom v0.1.0 (/Users/pavan/builds/phantom)
+    Finished `test` profile [unoptimized + debuginfo] target(s)
+running 35 tests
+test result: ok. 35 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out</code></pre>
   </div>
 </section>
 
