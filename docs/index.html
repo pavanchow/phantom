@@ -13,6 +13,9 @@
 <meta property="og:title" content="Phantom: A CHIP-8 Emulator in Rust">
 <meta property="og:description" content="A CHIP-8 emulator in Rust with a fully unit-tested CPU core. The CPU is the star, not the graphics.">
 <meta property="og:url" content="https://pavanchow.github.io/phantom/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Phantom: A CHIP-8 Emulator in Rust">
+<meta name="twitter:description" content="A CHIP-8 emulator in Rust with a fully unit-tested CPU core. The CPU is the star, not the graphics.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -43,6 +46,20 @@
   html{scroll-behavior:smooth}
   body{background:#fff;color:var(--ink);
     font:17px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+  @media (prefers-color-scheme: dark){
+    :root{
+      --accent:#ff6a3d;--accent-soft:#2a140c;
+      --ink:#f5f5f7;--muted:#a1a1a6;--faint:#787b8a;
+      --line:#2c2c2e;--panel:#161618;--panel2:#1c1c1e;
+    }
+    body{background:#0b0b0d}
+    nav{background:rgba(11,11,13,.82)}
+    .card{background:linear-gradient(180deg,#1a1512,#141010)}
+    .btn.primary{background:var(--accent);color:#0b0b0d}
+    .btn.secondary{background:#161618}
+    .demo-controls button{background:#161618}
+    .demo-controls button.primary{background:var(--accent);color:#0b0b0d;border-color:var(--accent)}
+  }
   .wrap{max-width:1040px;margin:0 auto;padding:0 28px}
   a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}
 
