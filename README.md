@@ -6,6 +6,8 @@ Phantom is a CHIP-8 emulator written from scratch in Rust where the CPU is the s
 
 **[Live demo](https://pavanchow.github.io/phantom/)** · MIT licensed · written in Rust
 
+Built from scratch by [Pavan Nallamothu](https://pavanchow.github.io/) ([LinkedIn](https://www.linkedin.com/in/pavanchow/), [GitHub](https://github.com/pavanchow)).
+
 ## The tested-core angle
 
 `Cpu::step()` fetches, decodes, and executes exactly one opcode with no I/O and no timing baked in. That makes every instruction independently testable:
